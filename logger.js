@@ -5,7 +5,7 @@ const LOG_DIR = path.join(__dirname, "logs");
 const CSV_PATH = path.join(LOG_DIR, "compression_log.csv");
 const TXT_PATH = path.join(LOG_DIR, "compression_log.txt");
 
-const CSV_HEADER = "Date,Time,Filename,Location,Original Size (bytes),Compressed Size (bytes),Original Size (readable),Compressed Size (readable),Saved (bytes),Saved (%)";
+const CSV_HEADER = "Date,Time,Filename,Location,Original Size (bytes),Compressed Size (bytes),Original Size (readable),Compressed Size (readable),Saved (bytes),Saved (%),Duration (s)";
 
 function ensureLogDir() {
   if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -46,8 +46,9 @@ function csvEscape(val) {
  * @param {string} entry.outputPath  - full path of compressed file
  * @param {number} entry.origSize    - bytes
  * @param {number} entry.newSize     - bytes
+ * @param {number} entry.elapsedSec  - encoding duration in seconds
  */
-function logEntry({ inputPath, outputPath, origSize, newSize }) {
+function logEntry({ inputPath, outputPath, origSize, newSize, elapsedSec }) {
   ensureLogDir();
   ensureCsvHeader();
 
@@ -70,6 +71,7 @@ function logEntry({ inputPath, outputPath, origSize, newSize }) {
     csvEscape(newReadable),
     savedBytes,
     savedPct + "%",
+    elapsedSec,
   ].join(",");
   fs.appendFileSync(CSV_PATH, csvRow + "\n", "utf8");
 
@@ -83,6 +85,7 @@ function logEntry({ inputPath, outputPath, origSize, newSize }) {
     `  Original   : ${origReadable.padStart(10)}   (${origSize.toLocaleString()} bytes)`,
     `  Compressed : ${newReadable.padStart(10)}   (${newSize.toLocaleString()} bytes)`,
     `  Saved      : ${savedReadable.padStart(10)}   (${savedPct}%)`,
+    `  Duration   : ${elapsedSec}s`,
     "",
   ].join("\n");
   fs.appendFileSync(TXT_PATH, block + "\n", "utf8");
@@ -93,8 +96,9 @@ function logEntry({ inputPath, outputPath, origSize, newSize }) {
  * @param {object} summary
  * @param {number} summary.totalFiles
  * @param {number} summary.totalSavedBytes
+ * @param {number} summary.totalElapsedSec
  */
-function logSessionSummary({ totalFiles, totalSavedBytes }) {
+function logSessionSummary({ totalFiles, totalSavedBytes, totalElapsedSec }) {
   ensureLogDir();
   const { date, time } = now();
   const block = [
@@ -102,6 +106,7 @@ function logSessionSummary({ totalFiles, totalSavedBytes }) {
     `  SESSION SUMMARY  —  ${date}  ${time}`,
     `  Files compressed : ${totalFiles}`,
     `  Total space saved: ${formatBytes(totalSavedBytes)}`,
+    `  Total duration   : ${totalElapsedSec}s`,
     "═".repeat(72),
     "",
     "",
